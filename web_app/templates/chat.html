@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Safety Models POC - Chat Interface</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.2/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 1200px;
+            height: 80vh;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            overflow: hidden;
+        }
+        
+        .chat-section {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #e0e0e0;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .age-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 15px;
+            border-radius: 25px;
+        }
+        
+        .age-selector select {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 14px;
+            outline: none;
+            cursor: pointer;
+        }
+        
+        .age-selector select option {
+            background: #667eea;
+        }
+        
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message-content {
+            background: white;
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 70%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .message.sent .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-left: auto;
+        }
+        
+        .message-time {
+            font-size: 11px;
+            color: #999;
+            margin-top: 5px;
+            text-align: right;
+        }
+        
+        .input-section {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        .message-input:focus {
+            border-color: #667eea;
+        }
+        
+        .send-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        
+        .send-button:hover {
+            transform: scale(1.1);
+        }
+        
+        .send-button:active {
+            transform: scale(0.95);
+        }
+        
+        .analysis-section {
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+        
+        .analysis-header {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .analysis-header h2 {
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .analysis-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .risk-indicator {
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 14px;
+        }
+        
+        .risk-low {
+            background: #cce5ff;
+            color: #004085;
+        }
+        .risk-safe {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .risk-high {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .risk-critical {
+            background: #721c24;
+            color: white;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        
+        .metric-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+        
+        .interventions-list {
+            margin-top: 20px;
+        }
+        
+        .intervention-item {
+            background: white;
+            border: 1px solid #e0e0e0;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .intervention-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+        
+        .intervention-warning {
+            background: #fff3cd;
+        }
+        
+        .intervention-crisis {
+            background: #f8d7da;
+        }
+        
+        .intervention-moderate {
+            background: #cce5ff;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            margin-top: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="chat-section">
+            <div class="header">
+                <h1>🛡️ AI Safety Chat Monitor</h1>
+                <div class="age-selector">
+                    <label>User Age:</label>
+                    <select id="userAge">
+                        <option value="">Not specified</option>
+                        <option value="10">10 years</option>
+                        <option value="13">13 years</option>
+                        <option value="15">15 years</option>
+                        <option value="17">17 years</option>
+                        <option value="18">18+ years</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="messages-container" id="messagesContainer">
+                <div class="message">
+                    <div class="message-content">
+                        Welcome to the AI Safety POC! Type any message to see real-time safety analysis.
+                    </div>
+                    <div class="message-time">System</div>
+                </div>
+            </div>
+            
+            <div class="input-section">
+                <div class="input-wrapper">
+                    <input 
+                        type="text" 
+                        class="message-input" 
+                        id="messageInput"
+                        placeholder="Type a message to analyze..."
+                        onkeypress="handleKeyPress(event)"
+                    >
+                    <button class="send-button" onclick="sendMessage()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M22 2L11 13" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="analysis-section">
+            <div class="analysis-header">
+                <h2>Safety Analysis</h2>
+            </div>
+            
+            <div class="analysis-content" id="analysisContent">
+                <div class="risk-indicator risk-safe" id="riskIndicator">
+                    SAFE
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-label">Risk Score</div>
+                    <div class="metric-value" id="riskScore">0.00</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="riskProgress" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="abuseScore">0.00</div>
+                        <div class="stat-label">Abuse</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="escalationScore">0.00</div>
+                        <div class="stat-label">Escalation</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="crisisScore">0.00</div>
+                        <div class="stat-label">Crisis</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="contentScore">0.00</div>
+                        <div class="stat-label">Content</div>
+                    </div>
+                </div>
+                
+                <div class="interventions-list" id="interventionsList">
+                    <h3 style="margin-bottom: 10px; color: #666; font-size: 14px;">Interventions</h3>
+                    <div class="intervention-item">
+                        <div class="intervention-icon">✓</div>
+                        <div>No interventions needed</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add message to chat
+            addMessageToChat(message, true);
+            input.value = '';
+            
+            // Get user age
+            const userAge = document.getElementById('userAge').value;
+            
+            // Send for analysis
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: message,
+                        user_age: userAge ? parseInt(userAge) : null
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateAnalysis(data.analysis);
+                }
+            } catch (error) {
+                console.error('Analysis error:', error);
+            }
+        }
+        
+        function addMessageToChat(message, isSent = false) {
+            const container = document.getElementById('messagesContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
+            
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            messageDiv.innerHTML = `
+                <div class="message-content">${escapeHtml(message)}</div>
+                <div class="message-time">${time}</div>
+            `;
+            
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function updateAnalysis(analysis) {
+            // Update risk indicator
+            const riskIndicator = document.getElementById('riskIndicator');
+            riskIndicator.className = `risk-indicator risk-${analysis.risk_level}`;
+            riskIndicator.textContent = analysis.risk_level.toUpperCase();
+            
+            // Update scores
+            document.getElementById('riskScore').textContent = analysis.risk_score.toFixed(2);
+            document.getElementById('riskProgress').style.width = `${analysis.risk_score * 100}%`;
+            
+            document.getElementById('abuseScore').textContent = analysis.abuse_score.toFixed(2);
+            document.getElementById('escalationScore').textContent = analysis.escalation_score.toFixed(2);
+            document.getElementById('crisisScore').textContent = analysis.crisis_score.toFixed(2);
+            document.getElementById('contentScore').textContent = analysis.content_filter_score.toFixed(2);
+            
+            // Update interventions
+            const interventionsList = document.getElementById('interventionsList');
+            interventionsList.innerHTML = '<h3 style="margin-bottom: 10px; color: #666; font-size: 14px;">Interventions</h3>';
+            
+            if (analysis.interventions.length === 0 || analysis.interventions[0] === 'none') {
+                interventionsList.innerHTML += `
+                    <div class="intervention-item">
+                        <div class="intervention-icon">✓</div>
+                        <div>No interventions needed</div>
+                    </div>
+                `;
+            } else {
+                analysis.interventions.forEach(intervention => {
+                    const icon = getInterventionIcon(intervention);
+                    const text = getInterventionText(intervention);
+                    const className = getInterventionClass(intervention);
+                    
+                    interventionsList.innerHTML += `
+                        <div class="intervention-item">
+                            <div class="intervention-icon ${className}">${icon}</div>
+                            <div>${text}</div>
+                        </div>
+                    `;
+                });
+            }
+        }
+        
+        function getInterventionIcon(type) {
+            const icons = {
+                'warning': '⚠️',
+                'content_hidden': '🚫',
+                'escalate_moderator': '👤',
+                'crisis_support': '🆘',
+                'account_restriction': '🔒'
+            };
+            return icons[type] || '📋';
+        }
+        
+        function getInterventionText(type) {
+            const texts = {
+                'warning': 'Warning issued',
+                'content_hidden': 'Content hidden',
+                'escalate_moderator': 'Escalated to moderator',
+                'crisis_support': 'Crisis support activated',
+                'account_restriction': 'Account restricted'
+            };
+            return texts[type] || type;
+        }
+        
+        function getInterventionClass(type) {
+            if (type === 'crisis_support') return 'intervention-crisis';
+            if (type === 'warning') return 'intervention-warning';
+            return 'intervention-moderate';
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+        
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+        
+        // Sample messages for testing
+        const sampleMessages = [
+            "Hello, how are you today?",
+            "I'm feeling really frustrated right now",
+            "This conversation is getting out of hand",
+            "Can we talk about something else?",
+            "I need help with something important"
+        ];
+        
+        // Add sample button functionality
+        function addSampleButtons() {
+            const inputSection = document.querySelector('.input-section');
+            const samplesDiv = document.createElement('div');
+            samplesDiv.style.marginBottom = '10px';
+            samplesDiv.innerHTML = '<small style="color: #666;">Quick samples:</small> ';
+            
+            sampleMessages.forEach(msg => {
+                const btn = document.createElement('button');
+                btn.textContent = msg.substring(0, 20) + '...';
+                btn.style.margin = '2px';
+                btn.style.padding = '3px 8px';
+                btn.style.fontSize = '11px';
+                btn.style.borderRadius = '12px';
+                btn.style.border = '1px solid #667eea';
+                btn.style.background = 'white';
+                btn.style.color = '#667eea';
+                btn.style.cursor = 'pointer';
+                btn.onclick = () => {
+                    document.getElementById('messageInput').value = msg;
+                    sendMessage();
+                };
+                samplesDiv.appendChild(btn);
+            });
+            
+            inputSection.insertBefore(samplesDiv, inputSection.firstChild);
+        }
+        
+        // Initialize on load
+        window.addEventListener('load', () => {
+            addSampleButtons();
+            
+            const socket = io();
+
+            socket.on('analysis_update', function(data) {
+                updateAnalysis(data.analysis);
+            });
+        });
+    </script>
+</body>
+</html>

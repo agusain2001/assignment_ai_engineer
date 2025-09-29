@@ -1,0 +1,70 @@
+{
+  "abuse": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1_score": 1.0,
+    "auc": 1.0,
+    "accuracy": 1.0,
+    "confusion_matrix": [
+      [
+        24,
+        0
+      ],
+      [
+        0,
+        23
+      ]
+    ]
+  },
+  "escalation": {
+    "precision": 0.8571428571428571,
+    "recall": 1.0,
+    "f1_score": 0.9230769230769231,
+    "auc": 1.0,
+    "accuracy": 0.8666666666666667,
+    "confusion_matrix": [
+      [
+        1,
+        2
+      ],
+      [
+        0,
+        12
+      ]
+    ]
+  },
+  "crisis": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1_score": 0.0,
+    "auc": 0.8333333333333333,
+    "accuracy": 0.5714285714285714,
+    "confusion_matrix": [
+      [
+        4,
+        0
+      ],
+      [
+        3,
+        0
+      ]
+    ]
+  },
+  "content": {
+    "precision": 0.42857142857142855,
+    "recall": 1.0,
+    "f1_score": 0.6,
+    "auc": 0.625,
+    "accuracy": 0.42857142857142855,
+    "confusion_matrix": [
+      [
+        0,
+        4
+      ],
+      [
+        0,
+        3
+      ]
+    ]
+  }
+}

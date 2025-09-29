@@ -1,0 +1,77 @@
+# config/config.yaml
+# AI Safety Models POC Configuration
+
+# Model thresholds for risk detection
+thresholds:
+  abuse: 0.7           # Threshold for abuse detection
+  escalation: 0.6      # Threshold for escalation patterns
+  crisis: 0.8          # Threshold for crisis intervention
+  content_filter: 0.5  # Threshold for content filtering
+
+# Model weights for combined risk scoring
+model_weights:
+  abuse: 0.3
+  escalation: 0.25
+  crisis: 0.35
+  content_filter: 0.1
+
+# Age categories for content filtering
+age_categories:
+  child:
+    min: 0
+    max: 12
+  teen:
+    min: 13
+    max: 17
+  adult:
+    min: 18
+    max: 100
+
+# Intervention settings
+interventions:
+  warning_threshold: 0.4
+  moderator_threshold: 0.6
+  crisis_threshold: 0.8
+  restriction_threshold: 0.9
+
+# Performance settings
+performance:
+  max_latency_ms: 100
+  batch_size: 32
+  cache_enabled: true
+  cache_ttl: 3600  # seconds
+
+# Model paths
+models:
+  abuse_model: "trained_models/abuse_sklearn_model.pkl"
+  escalation_model: "trained_models/escalation_sklearn_model.pkl"
+  crisis_model: "trained_models/crisis_sklearn_model.pkl"
+  content_model: "trained_models/content_sklearn_model.pkl"
+  escalation_lstm: "trained_models/escalation_lstm_model.pt"
+
+# Logging configuration
+logging:
+  level: INFO
+  file: "logs/safety_pipeline.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# API settings
+api:
+  host: "0.0.0.0"
+  port: 5000
+  debug: false
+  cors_enabled: true
+  rate_limit: 100  # requests per minute
+
+# Database settings (for production)
+database:
+  type: "sqlite"  # or postgresql, mysql
+  path: "data/safety.db"
+  pool_size: 10
+
+# Monitoring
+monitoring:
+  enabled: true
+  metrics_port: 9090
+  alert_email: "safety-team@example.com"
+  high_risk_alert: true

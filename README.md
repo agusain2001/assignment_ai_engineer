@@ -24,8 +24,8 @@ This project implements a comprehensive AI Safety Models suite for conversationa
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/ai-safety-poc.git
-cd ai-safety-poc
+git clone https://github.com/agusain2001/assignment_ai_engineer.git
+cd assignment_ai_engineer
 ```
 
 2. Create a virtual environment:
